@@ -1,22 +1,82 @@
 \ProvidesPackage{lists}
 
+% BEGIN DEBUGGING MACROS - MAKE INTO A SEPERATE FILE MAYBE EVENTUALLY
+\RequirePackage{trace}                       % For debugging only
+
+\newif\ifdebug
+\debugtrue
+\def\dblog#1{\ifdebug\wlog{[DEBUG]: #1}\fi}  % For debugging only
+% END DEBUGGING MACROS   - MAKE INTO A SEPERATE FILE MAYBE EVENTUALLY
+
+
+\newcommand*\ifcounter[1]{%       Taken unaltered from https://tex.stackexchange.com/questions/155776/check-if-counter-exists
+  \ifcsname c@#1\endcsname%       Necessary to allow redefining a list with a name already given
+    \expandafter\@firstoftwo
+  \else
+    \expandafter\@secondoftwo
+  \fi
+}
+
+
 \def\emptystring{}
 \def\csvsep{,}
 
-\newcommand{\declarelist}[2]
-{
-    \expandafter\def\csname list@#1\endcsname{\emptystring}
-    \expandafter\def\csname list@#1@csv\endcsname{\emptystring}
-    \expandafter\def\csname list@#1@sep\endcsname{#2}
-    \newcounter{list@#1@count}
+\edef\emptylist{\emptystring}
+
+\def\lists@head\list@cons#1#2#3{#2}
+\def\lists@tail\list@cons#1#2#3{#1}
+
+\def\lists@iterate#1#2{%
+  %
+  \dblog{----------------- Start of iteration -----------------}%
+  %
+  \edef\tmp{#1}
+  \dblog{Current list: \tmp}%
+  %
+  \def\lists@curr@h{\expandafter\lists@head#1}%
+  \def\lists@curr@t{\expandafter\lists@tail#1}%
+  \dblog{Current tail: \lists@curr@t}%
+  \dblog{Current head: \lists@curr@h}%
+  %
+  #2{\lists@curr@h}%
+  \dblog{Current command: \unexpanded{#2{\lists@curr@h}}}
+  %
+  \expandafter\def\expandafter\tmp{\csname \lists@curr@t\endcsname}%
+  \edef\tmpflag{\tmp}
+  \dblog{Flag: \expandafter\noexpand\tmpflag}
+  \dblog{}
+  %
+  \ifx\emptylist\tmpflag%
+  \else%
+    \expandafter\expandafter\expandafter\lists@iterate\tmp#2%
+  \fi%
 }
 
-\newcommand{\declarecsvlist}[1]{\declarelist{#1}{, }}
+\def\iterate#1#2{%
+  \dblog{=================== Begin iterate ====================}%
+  \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
+  \expandafter\def\expandafter\tempB{\csname \tempA\endcsname}%
+  \expandafter\expandafter\expandafter\lists@iterate\tempB#2%
+}
 
-\newcommand{\getlist}[1]{\csname list@#1\endcsname}
+\newcommand{\declarelist}[2]
+{
+    \expandafter\edef\csname list@#1@cons@item0\endcsname{\emptylist}
+    \expandafter\edef\csname list@#1@sep\endcsname{#2}
+    \ifcounter{list@#1@count}{\setcounter{list@#1@count}{0}}{\newcounter{list@#1@count}}
+}
 
-% Appends a new label to the string specified by #1
-\def\appendtolist#1#2{
+\def\list@cons#1#2#3{%
+  #2#3\csname #1\endcsname%
+}
+
+\def\getsep#1{\csname list@#1@sep\endcsname}
+
+\def\unused#1#2{% REMOVE EVENTUALLY PROBABLY
+  \ifx\emptylist#1%
+    \expandafter\def\csname list@#1\endcsname{\emptystring}%
+    \expandafter\def\csname list@#1@csv\endcsname{\emptystring}%
+  \fi%
   \edef\temp{\csname list@#1\endcsname}%
   \ifx\emptystring\temp%
     \expandafter\edef\csname list@#1\endcsname{#2}%
@@ -32,16 +92,36 @@
     \expandafter\edef\csname list@#1@csv\endcsname{%
       \temp\csvsep#2}%
   \fi%
-  \stepcounter{list@#1@count}
+}
+
+\newcommand{\declarecsvlist}[1]{\declarelist{#1}{, }}
+
+\newcommand{\getlist}[1]{\csname list@#1\endcsname}
+
+% Appends a new item to the list specified by #1
+\def\appendtolist#1#2{%
+  \dblog{================ Begin append ===============}%
+  %
+  \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}%
+  \dblog{Appending #2 to #1 -> \tempA \space CONS #2}
+  %
+  \stepcounter{list@#1@count}%
+  \edef\tempB{list@#1@cons@item\arabic{list@#1@count}}%
+  %
+  \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter% This is disgusting. Unfortunately, I have no idea
+  \def\expandafter\expandafter\expandafter%                                             how to get TeX to expand the macros I want expanded
+  \csname \expandafter%                                                                 with fewer calls to \expandafter.
+  \tempB\expandafter%                                                                   For future reference: These are \tempA, \tempB (within
+  \endcsname\expandafter{\expandafter%                                                  the \csname clause) and \csname respectively.
+  \list@cons\expandafter{\tempA}{#2}{\getsep{#1}}}%
+  %
+  \dblog{}%
 }
 
 \newcommand{\doforall}[2]
 {
-  \IfNotEmpty{#1}
-  {%
-    \edef\tmp{\csname list@#1@csv\endcsname}
-    \expandafter\forcsvlist\expandafter#2\expandafter{\tmp}
-  }
+  \iterate{#1}{#2}
+  \PackageWarning{lists}{\noexpand\doforall is deprecated, use \noexpand\iterate instead.}
 }
 
 \newcommand{\IfElseEmpty}[3]
