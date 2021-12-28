@@ -52,6 +52,33 @@
   \fi%
 }
 
+\def\lists@foldl#1#2#3{%
+  %
+  \dblog{----------------- Start of foldl iteration -----------------}%
+  %
+  \edef\tmp{#1}%
+  \dblog{Current list: \tmp}%
+  \dblog{Current accumulator: #3}%
+  %
+  \def\lists@curr@h{\expandafter\lists@head#1}%
+  \def\lists@curr@t{\expandafter\lists@tail#1}%
+  \dblog{Current tail: \lists@curr@t}%
+  \dblog{Current head: \lists@curr@h}%
+  %
+  \def\tmp{\csname \lists@curr@t\endcsname}%
+  \edef\tmpflag{\tmp}%
+  \dblog{Flag: \expandafter\noexpand\tmpflag}%
+  \dblog{}%
+  %
+  \ifx\emptylist\tmpflag%
+    #3%
+  \else%
+    \edef\newAcc{#2{\lists@curr@h}{#3}}%
+    \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
+    \lists@foldl\expandafter\tmp\expandafter#2\expandafter\newAcc%
+  \fi%
+}
+
 \def\lists@map#1#2{%
   %
   \dblog{--------------- Start of map iteration ---------------}%
@@ -101,19 +128,22 @@
   \expandafter\expandafter\expandafter\lists@map\tempB#2%
 }
 
+\def\foldl#1#2#3{
+  \dblog{==================== Begin foldl =====================}%
+  \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
+  \def\tempB{\csname \tempA\endcsname}%
+  \expandafter\expandafter\expandafter\lists@foldl\tempB#2#3%
+}
+
 \newcommand{\declarelist}[2]
 {
     \expandafter\edef\csname list@#1@cons@item0\endcsname{\emptylist}
     \expandafter\edef\csname list@#1@sep\endcsname{#2}
     \ifcounter{list@#1@count}{\setcounter{list@#1@count}{0}}{\newcounter{list@#1@count}}
-}
+} 
 
 \def\list@cons#1#2#3{%
-  \ifx\emptylist#1%
-  #2%
-  \else%
-  #2#3\csname #1\endcsname%
-  \fi%
+  (#2#3\csname #1\endcsname)%
 }
 
 \def\getsep#1{\csname list@#1@sep\endcsname}
@@ -142,7 +172,19 @@
 
 \newcommand{\declarecsvlist}[1]{\declarelist{#1}{, }}
 
-\newcommand{\getlist}[1]{\csname list@#1@cons@item\arabic{list@#1@count}\endcsname}
+\def\lists@concat@curr{\emptystring}
+
+\def\lists@concat#1#2{%
+  \edef\temp{#1}%
+  \ifx\emptystring\temp%
+    \edef\lists@concat@curr{#2}%
+  \else%
+    \edef\lists@concat@curr{%
+      \temp#2\lists@concat@curr}%
+  \fi%
+}%
+
+\newcommand{\getlist}[1]{\foldl{#1}{\lists@concat}{\emptystring}}
 
 % Appends a new item to the list specified by #1
 \def\appendtolist#1#2{%
