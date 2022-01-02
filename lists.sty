@@ -195,12 +195,13 @@
     \ifcounter{list@#1@count}{\setcounter{list@#1@count}{0}}{\newcounter{list@#1@count}}
 }
 
-\newcommand{\listfromcsv}[3][,]
+\newcommand{\listfromcsv}[3][\csvsep]
 {
-  \declarelist{#2}
-  \def\lists@cmd##1{\appendtolist{#2}{##1}}
+  \declarelist{#2}{#1}
+  \def\lists@app##1{\appendtolist{#2}{##1}}
   \edef\tmp{#3}
-  \expandafter\forcsvlist\expandafter\lists@cmd\expandafter{\tmp}
+  \dblog{Entering foreach}
+  \expandafter\forcsvlist\expandafter\lists@app\expandafter{\tmp}
 }
 
 \def\list@cons#1#2#3{%
