@@ -94,27 +94,27 @@
   \dblog{Pattern matching successful}%
   \edef\tmpflag{\csname\lists@curr@t\endcsname}%
   %
+  \edef\tmpItem{#2{\lists@curr@h}}%
+  \dblog{Old item: \lists@curr@h}%
+  \dblog{New item: \tmpItem}%
+  \dblog{Tail: \lists@curr@t}%
+  %                                               
+  \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%               Theoretically, the more elegant solution described in https://tex.stackexchange.com/questions/104506/expanding-arguments-before-macro-call
+  \def\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%           might also work, but I have not been able to solve my issues through it.
+  #1\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
+  {\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
+  \list@cons\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
+  {\expandafter\expandafter\expandafter\lists@curr@t\expandafter\expandafter\expandafter}%
+  \expandafter\expandafter\expandafter{\expandafter\tmpItem\expandafter}%
+  \expandafter{\lists@curr@s}}%   
+  %
   \ifx\emptylist\tmpflag%
   \else%
-    \edef\tmpItem{#2{\lists@curr@h}}%
-    \dblog{Old item: \lists@curr@h}%
-    \dblog{New item: \tmpItem}%
-    \dblog{Tail: \lists@curr@t}%
-    %                                               
-    \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%               Theoretically, the more elegant solution described in https://tex.stackexchange.com/questions/104506/expanding-arguments-before-macro-call
-    \def\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%           might also work, but I have not been able to solve my issues through it.
-    #1\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
-    {\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
-    \list@cons\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
-    {\expandafter\expandafter\expandafter\lists@curr@t\expandafter\expandafter\expandafter}%
-    \expandafter\expandafter\expandafter{\expandafter\tmpItem\expandafter}%
-    \expandafter{\lists@curr@s}}%   
-    %
     \expandafter\def\expandafter\tmp\expandafter{\csname\lists@curr@t\endcsname}%
     \dblog{Redefinition successful, value now \expandafter\noexpand#1}%
     \expandafter\lists@map\tmp#2%
-    \dblog{Recursion successful, value now #1}%
   \fi%
+  \dblog{Recursion successful, value now #1}%
 }
 
 \def\iterate#1#2{%
