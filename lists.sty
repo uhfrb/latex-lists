@@ -19,6 +19,8 @@
   \fi
 }
 
+\newcounter{lists@count@rec}
+\newcounter{lists@count@misc}
 
 \def\emptystring{}
 \def\csvsep{,}
@@ -41,9 +43,7 @@
   \dblog{Current tail: \lists@curr@t}%
   \dblog{Current head: \lists@curr@h}%
   %
-  #2{\lists@curr@h}%
-  \dblog{Current command: \unexpanded{#2{\lists@curr@h}}}%
-  %
+  \expandafter\edef\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname{\lists@curr@h}%
   \def\tmp{\csname \lists@curr@t\endcsname}%
   \edef\tmpflag{\tmp}%
   \dblog{Flag: \expandafter\noexpand\tmpflag}%
@@ -51,8 +51,14 @@
   %
   \ifx\emptylist\tmpflag%
   \else%
+    \stepcounter{lists@count@rec}%
     \expandafter\expandafter\expandafter\lists@iterate\tmp#2%
+    \addtocounter{lists@count@rec}{-1}%
+    \dblog{Return from recursion}%
   \fi%
+  %
+  \expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}%
+  \dblog{Current command: \expandafter\noexpand\expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}}%
 }
 
 \def\lists@foldl#1#2#3{%
@@ -118,24 +124,68 @@
 }
 
 \def\iterate#1#2{%
-  \dblog{=================== Begin iterate ====================}%
-  \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
-  \def\tempB{\csname \tempA\endcsname}%
-  \expandafter\expandafter\expandafter\lists@iterate\tempB#2%
+  \IfNotEmpty{#1}{%
+    \dblog{=================== Begin iterate ====================}%
+    \setcounter{lists@count@rec}{0}
+    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
+    \def\tempB{\csname \tempA\endcsname}%
+    \expandafter\expandafter\expandafter\lists@iterate\tempB#2%
+  }%
 }
 
 \def\map#1#2{%
-  \dblog{===================== Begin map ======================}%
-  \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
-  \def\tempB{\csname \tempA\endcsname}%
-  \expandafter\expandafter\expandafter\lists@map\tempB#2%
+  \IfNotEmpty{#1}{%
+    \dblog{===================== Begin map ======================}%
+    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
+    \def\tempB{\csname \tempA\endcsname}%
+    \expandafter\expandafter\expandafter\lists@map\tempB#2%
+  }%
 }
 
 \def\foldl#1#2#3{
-  \dblog{==================== Begin foldl =====================}%
-  \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
-  \def\tempB{\csname \tempA\endcsname}%
-  \expandafter\expandafter\expandafter\lists@foldl\tempB#2#3%
+  \IfNotEmpty{#1}{%
+    \dblog{==================== Begin foldl =====================}%
+    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
+    \def\tempB{\csname \tempA\endcsname}%
+    \expandafter\expandafter\expandafter\lists@foldl\tempB#2#3%
+  }%
+}
+
+\def\takeUpToNth#1#2#3{%
+  \dblog{==================== Begin firstN ====================}%
+  \declarelist{#3}{\getsep{#1}}%
+  \setcounter{lists@count@misc}{0}
+  
+  \def\lists@take##1{%
+    \ifnum#2>\value{lists@count@misc}%
+      \dblog{Taken}%
+      \appendtolist{#3}{##1}%
+      \stepcounter{lists@count@misc}%
+    \fi%
+  }
+  
+  \iterate{#1}{\lists@take}
+}
+
+\def\takeAfterNth#1#2#3{%
+  \dblog{==================== Begin firstN ====================}%
+  \declarelist{#3}{\getsep{#1}}%
+  \setcounter{lists@count@misc}{1}
+  
+  \def\lists@take##1{%
+    \ifnum#2<\value{lists@count@misc}%
+      \dblog{Taken}%
+      \appendtolist{#3}{##1}%
+    \fi%
+    \stepcounter{lists@count@misc}%
+  }
+  
+  \iterate{#1}{\lists@take}
+}
+
+\newcommand{\splitAt}[3]{
+  \takeUpToNth{#1}{#2}{#3@front}
+  \takeAfterNth{#1}{#2}{#3@back}
 }
 
 \newcommand{\declarelist}[2]
@@ -143,7 +193,15 @@
     \expandafter\edef\csname list@#1@cons@item0\endcsname{\emptylist}
     \expandafter\edef\csname list@#1@sep\endcsname{#2}
     \ifcounter{list@#1@count}{\setcounter{list@#1@count}{0}}{\newcounter{list@#1@count}}
-} 
+}
+
+\newcommand{\listfromcsv}[3][,]
+{
+  \declarelist{#2}
+  \def\lists@cmd##1{\appendtolist{#2}{##1}}
+  \edef\tmp{#3}
+  \expandafter\forcsvlist\expandafter\lists@cmd\expandafter{\tmp}
+}
 
 \def\list@cons#1#2#3{%
   (#2 [CONS] #1)%
