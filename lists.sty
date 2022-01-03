@@ -33,51 +33,67 @@
 
 \def\lists@iterate#1#2{%
   %
-  \dblog{----------------- Start of iteration -----------------}%
+  %\dblog{----------------- Start of iteration -----------------}%
   %
   \edef\tmp{#1}%
-  \dblog{Current list: \tmp}%
+  %\dblog{Current list: \tmp}%
   %
   \def\lists@curr@h{\expandafter\lists@head#1}%
   \def\lists@curr@t{\expandafter\lists@tail#1}%
-  \dblog{Current tail: \lists@curr@t}%
-  \dblog{Current head: \lists@curr@h}%
+  %\dblog{Current tail: \lists@curr@t}%
+  %\dblog{Current head: \lists@curr@h}%
   %
   \expandafter\edef\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname{\lists@curr@h}%
   \def\tmp{\csname \lists@curr@t\endcsname}%
   \edef\tmpflag{\tmp}%
-  \dblog{Flag: \expandafter\noexpand\tmpflag}%
-  \dblog{}%
+  %\dblog{Flag: \expandafter\noexpand\tmpflag}%
+  %\dblog{}%
   %
   \ifx\emptylist\tmpflag%
   \else%
     \stepcounter{lists@count@rec}%
     \expandafter\expandafter\expandafter\lists@iterate\tmp#2%
     \addtocounter{lists@count@rec}{-1}%
-    \dblog{Return from recursion}%
+    %\dblog{Return from recursion}%
   \fi%
   %
+  %\dblog{Current command: \expandafter\noexpand\expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}}%
   \expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}%
-  \dblog{Current command: \expandafter\noexpand\expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}}%
+}
+
+\def\head#1{%
+\IfNotEmpty{#1}{%
+    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
+    \def\tempB{\csname \tempA\endcsname}%
+    \expandafter\expandafter\expandafter\lists@iterate\tempB#2%
+  }%
+}
+
+\def\lists@gethead#1{\expandafter\lists@head#1}
+
+\def\pop#1{%
+  \IfNotEmpty{#1}{%
+    \addtocounter{list@#1@count}{-1}%
+  }%
 }
 
 \def\lists@foldl#1#2#3{%
   %
-  \dblog{----------------- Start of foldl iteration -----------------}%
+  %\dblog{----------------- Start of foldl iteration -----------------}%
   %
   \edef\tmp{#1}%
-  \dblog{Current list: \tmp}%
-  \dblog{Current accumulator: #3}%
+  %\dblog{Current list: \tmp}%
+  %\dblog{Current accumulator: #3}%
   %
   \def\lists@curr@h{\expandafter\lists@head#1}%
   \def\lists@curr@t{\expandafter\lists@tail#1}%
-  \dblog{Current tail: \lists@curr@t}%
-  \dblog{Current head: \lists@curr@h}%
+  %\dblog{Current tail: \lists@curr@t}%
+  %\dblog{Current head: \lists@curr@h}%
   %
   \def\tmp{\csname \lists@curr@t\endcsname}%
   \edef\tmpflag{\tmp}%
-  \dblog{Flag: \expandafter\noexpand\tmpflag}%
-  \dblog{}%
+  %\dblog{Flag: \expandafter\noexpand\tmpflag}%
+  %\dblog{}%
   %
   \edef\newAcc{#2{\lists@curr@h}{#3}}%
   \ifx\emptylist\tmpflag%
@@ -90,20 +106,20 @@
 
 \def\lists@map#1#2{%
   %
-  \dblog{--------------- Start of map iteration ---------------}%
-  \dblog{Current list: #1}
+  %\dblog{--------------- Start of map iteration ---------------}%
+  %\dblog{Current list: #1}
   %
   \def\lists@curr@h{\expandafter\lists@head#1}%
   \edef\lists@curr@t{\expandafter\lists@tail#1}%
   \edef\lists@curr@s{\expandafter\lists@sep#1}%
   %
-  \dblog{Pattern matching successful}%
+  %\dblog{Pattern matching successful}%
   \edef\tmpflag{\csname\lists@curr@t\endcsname}%
   %
   \edef\tmpItem{#2{\lists@curr@h}}%
-  \dblog{Old item: \lists@curr@h}%
-  \dblog{New item: \tmpItem}%
-  \dblog{Tail: \lists@curr@t}%
+  %\dblog{Old item: \lists@curr@h}%
+  %\dblog{New item: \tmpItem}%
+  %\dblog{Tail: \lists@curr@t}%
   %                                               
   \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%               Theoretically, the more elegant solution described in https://tex.stackexchange.com/questions/104506/expanding-arguments-before-macro-call
   \def\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%           might also work, but I have not been able to solve my issues through it.
@@ -117,15 +133,15 @@
   \ifx\emptylist\tmpflag%
   \else%
     \expandafter\def\expandafter\tmp\expandafter{\csname\lists@curr@t\endcsname}%
-    \dblog{Redefinition successful, value now \expandafter\noexpand#1}%
+    %\dblog{Redefinition successful, value now \expandafter\noexpand#1}%
     \expandafter\lists@map\tmp#2%
   \fi%
-  \dblog{Recursion successful, value now #1}%
+  %\dblog{Recursion successful, value now #1}%
 }
 
 \def\iterate#1#2{%
   \IfNotEmpty{#1}{%
-    \dblog{=================== Begin iterate ====================}%
+    %\dblog{=================== Begin iterate ====================}%
     \setcounter{lists@count@rec}{0}
     \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
     \def\tempB{\csname \tempA\endcsname}%
@@ -135,7 +151,7 @@
 
 \def\map#1#2{%
   \IfNotEmpty{#1}{%
-    \dblog{===================== Begin map ======================}%
+    %\dblog{===================== Begin map ======================}%
     \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
     \def\tempB{\csname \tempA\endcsname}%
     \expandafter\expandafter\expandafter\lists@map\tempB#2%
@@ -144,7 +160,7 @@
 
 \def\foldl#1#2#3{
   \IfNotEmpty{#1}{%
-    \dblog{==================== Begin foldl =====================}%
+    %\dblog{==================== Begin foldl =====================}%
     \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
     \def\tempB{\csname \tempA\endcsname}%
     \expandafter\expandafter\expandafter\lists@foldl\tempB#2#3%
@@ -152,13 +168,13 @@
 }
 
 \def\takeUpToNth#1#2#3{%
-  \dblog{==================== Begin firstN ====================}%
+  %\dblog{==================== Begin firstN ====================}%
   \declarelist{#3}{\getsep{#1}}%
   \setcounter{lists@count@misc}{0}
   
   \def\lists@take##1{%
     \ifnum#2>\value{lists@count@misc}%
-      \dblog{Taken}%
+      %\dblog{Taken}%
       \appendtolist{#3}{##1}%
       \stepcounter{lists@count@misc}%
     \fi%
@@ -168,13 +184,13 @@
 }
 
 \def\takeAfterNth#1#2#3{%
-  \dblog{==================== Begin firstN ====================}%
+  %\dblog{==================== Begin firstN ====================}%
   \declarelist{#3}{\getsep{#1}}%
   \setcounter{lists@count@misc}{1}
   
   \def\lists@take##1{%
     \ifnum#2<\value{lists@count@misc}%
-      \dblog{Taken}%
+      %\dblog{Taken}%
       \appendtolist{#3}{##1}%
     \fi%
     \stepcounter{lists@count@misc}%
@@ -200,7 +216,7 @@
   \declarelist{#2}{#1}
   \def\lists@app##1{\appendtolist{#2}{##1}}
   \edef\tmp{#3}
-  \dblog{Entering foreach}
+  %\dblog{Entering foreach}
   \expandafter\forcsvlist\expandafter\lists@app\expandafter{\tmp}
 }
 
@@ -209,7 +225,7 @@
 }
 
 \def\getconsstructure#1{%
-%\dblog{List head: \expandafter\noexpand\csname list@#1@cons@item\arabic{list@#1@count}\endcsname}%
+%%\dblog{List head: \expandafter\noexpand\csname list@#1@cons@item\arabic{list@#1@count}\endcsname}%
 \csname list@#1@cons@item\arabic{list@#1@count}\endcsname}
 
 \def\getsep#1{\csname list@#1@sep\endcsname}
@@ -249,10 +265,10 @@
 
 % Appends a new item to the list specified by #1
 \def\appendtolist#1#2{%
-  \dblog{================ Begin append ===============}%
+  %\dblog{================ Begin append ===============}%
   %
   \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}%
-  \dblog{Appending #2 to #1 -> \tempA \space CONS #2}
+  %\dblog{Appending #2 to #1 -> \tempA \space CONS #2}
   %
   \stepcounter{list@#1@count}%
   \edef\tempB{list@#1@cons@item\arabic{list@#1@count}}%
@@ -264,7 +280,7 @@
   \endcsname\expandafter{\expandafter%                                                  
   \list@cons\expandafter{\tempA}{#2}{\getsep{#1}}}%
   %
-  \dblog{}%
+  %\dblog{}%
 }
 
 \newcommand{\doforall}[2]
