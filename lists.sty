@@ -183,9 +183,9 @@
   \iterate{#1}{\lists@take}
 }
 
-\newcommand{\splitAt}[3]{
-  \takeUpToNth{#1}{#2}{#3@front}
-  \takeAfterNth{#1}{#2}{#3@back}
+\newcommand{\splitAt}[2]{
+  \takeUpToNth{#1}{#2}{#1@front}
+  \takeAfterNth{#1}{#2}{#1@back}
 }
 
 \newcommand{\declarelist}[2]
@@ -205,8 +205,12 @@
 }
 
 \def\list@cons#1#2#3{%
-  (#2 [CONS] #1)%
+  (#2 [CONS] \csname #1\endcsname)%
 }
+
+\def\getconsstructure#1{%
+%\dblog{List head: \expandafter\noexpand\csname list@#1@cons@item\arabic{list@#1@count}\endcsname}%
+\csname list@#1@cons@item\arabic{list@#1@count}\endcsname}
 
 \def\getsep#1{\csname list@#1@sep\endcsname}
 
