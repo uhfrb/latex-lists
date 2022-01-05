@@ -31,15 +31,17 @@
 \def\lists@tail\list@cons#1#2#3{#1}
 \def\lists@sep\list@cons#1#2#3{#3}
 
+\def\getsibling#1@front@@{\getconsstructure{#1@back}}
+\def\lists@getname list@#1@cons@#2{#1}
+
 \def\lists@iterate#1#2{%
   %
   %\dblog{----------------- Start of iteration -----------------}%
-  %
-  \edef\tmp{#1}%
-  %\dblog{Current list: \tmp}%
+  %\dblog{\expandafter\noexpand#1}
   %
   \def\lists@curr@h{\expandafter\lists@head#1}%
   \def\lists@curr@t{\expandafter\lists@tail#1}%
+  %
   %\dblog{Current tail: \lists@curr@t}%
   %\dblog{Current head: \lists@curr@h}%
   %
@@ -58,7 +60,7 @@
   \fi%
   %
   %\dblog{Current command: \expandafter\noexpand\expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}}%
-  \expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}%
+  \expandafter\expandafter\expandafter#2\expandafter\expandafter\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}%
 }
 
 \def\lists@foldl#1#2#3{%
@@ -134,8 +136,8 @@
 \def\iterate#1#2{%
   \IfNotEmpty{#1}{%
     %\dblog{=================== Begin iterate ====================}%
-    \setcounter{lists@count@rec}{0}
-    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
+    \setcounter{lists@count@rec}{0}%
+    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}%
     \def\tempB{\csname \tempA\endcsname}%
     \expandafter\expandafter\expandafter\lists@iterate\tempB#2%
   }%
@@ -185,17 +187,24 @@
 }
 
 \def\takeNth#1#2{%
-  \setcounter{lists@count@misc}{0}
-  
-  \def\lists@take##1{%
-    \ifnum#2=\value{lists@count@misc}%
-      \dblog{Taken element at pos #2: ##1}%
-       ##1%
-    \fi%
-    \stepcounter{lists@count@misc}%
-  }
-  
-  \iterate{#1}{\lists@take}
+  \setcounter{lists@count@misc}{#2 + 1}%
+  \expandafter\def\expandafter\lists@n\expandafter{%
+    \csname list@#1@cons@item\arabic{lists@count@misc}\endcsname%
+  }%
+  \expandafter\expandafter\expandafter\edef\expandafter\expandafter\expandafter\lists@h\expandafter\expandafter\expandafter{%
+  \expandafter\expandafter\expandafter\lists@head\lists@n}%
+  \lists@h%
+  %\setcounter{lists@count@misc}{0}
+  %
+  %\def\lists@take##1{%
+  %  \ifnum#2=\value{lists@count@misc}%
+  %    \dblog{Taken element at pos #2: ##1}%
+  %     ##1%
+  %  \fi%
+  %  \stepcounter{lists@count@misc}%
+  %}
+  %
+  %\iterate{#1}{\lists@take}
 }
 
 \def\takeUpToNth#1#2#3{%
@@ -231,8 +240,20 @@
 }
 
 \newcommand{\splitAt}[2]{
-  \takeUpToNth{#1}{#2}{#1@front}
-  \takeFomNth{#1}{#2}{#1@back}
+  \declarelist{#1@front}{\getsep{#1}}
+  \declarelist{#1@back}{\getsep{#1}}
+  \setcounter{lists@count@misc}{0}
+  
+  \def\lists@take##1{
+    \ifnum#2<\value{lists@count@misc}
+      \appendtolist{#1@back}{##1}
+    \else
+      \appendtolist{#1@front}{##1}
+    \fi
+    \stepcounter{lists@count@misc}
+  }
+  
+  \iterate{#1}{\lists@take}
 }
 
 \newcommand{\declarelist}[2]
@@ -298,18 +319,27 @@
 \def\appendtolist#1#2{%
   %\dblog{================ Begin append ===============}%
   %
-  \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}%
+  \edef\lists@oldHead{list@#1@cons@item\arabic{list@#1@count}}%
   %\dblog{Appending #2 to #1 -> \tempA \space CONS #2}
   %
   \stepcounter{list@#1@count}%
-  \edef\tempB{list@#1@cons@item\arabic{list@#1@count}}%
+  \edef\lists@newHead{list@#1@cons@item\arabic{list@#1@count}}%
   %
-  \expandafter\expandafter\expandafter%                                         
-  \def\expandafter%                                                             
-  \csname\expandafter\tempB\expandafter%                                        
-  %                                                                             
-  \endcsname\expandafter{\expandafter%                                                  
-  \list@cons\expandafter{\tempA}{#2}{\getsep{#1}}}%
+  \edef\lists@item@value{#2}%
+  \edef\lists@sep{\getsep{#1}}
+  %
+  \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\lists@app@tmp\expandafter\expandafter\expandafter{%
+    \expandafter\expandafter\expandafter%
+    \list@cons\expandafter\expandafter\expandafter{%
+      \expandafter\lists@oldHead\expandafter}%
+      \expandafter{\lists@item@value}{\lists@sep}%
+  }%
+  %
+  %\dblog{\expandafter\noexpand\lists@app@tmp}%
+  %
+  \expandafter\expandafter\expandafter\def%
+    \expandafter\csname\expandafter\lists@newHead\expandafter\endcsname\expandafter%
+    {\lists@app@tmp}%
   %
   %\dblog{}%
 }
@@ -334,3 +364,5 @@
 \newcommand{\IfNotEmpty}[2]{\IfElseEmpty{#1}{}{#2}}
 
 \newcommand{\getcount}[1]{\value{list@#1@count}}
+
+\newcommand{\getcountdb}[1]{\arabic{list@#1@count}}
