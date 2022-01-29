@@ -1,0 +1,25 @@
+\ProvidesPackage{debug}
+
+\RequirePackage{trace}
+
+\newif\ifdebug
+\debugtrue
+\def\dblog#1{\ifdebug\wlog{[DEBUG]: \db@indentstr #1}\fi}
+
+\def\db@indentstr{}
+
+\def\db@gobble#1| {#1}
+
+\newenvironment{dbsection}[1]
+{
+    \dblog{}
+    \dblog{+++ entering #1}
+    \edef\db@indentstr{\db@indentstr | }
+    \dblog{}
+}
+{
+    \dblog{}
+    \expandafter\edef\expandafter\db@indentstr\expandafter{\expandafter\db@gobble\db@indentstr}
+    \dblog{--- exiting section}
+    \dblog{}
+}

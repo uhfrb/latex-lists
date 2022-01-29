@@ -1,15 +1,12 @@
 \ProvidesPackage{lists}
 
+\RequirePackage{debug}
 \RequirePackage{etoolbox}
 
-% BEGIN DEBUGGING MACROS - MAKE INTO A SEPERATE FILE MAYBE EVENTUALLY
-\RequirePackage{trace}                       % For debugging only
+\newcounter{lists@split}
+\newcounter{lists@misc}
 
-\newif\ifdebug
-\debugtrue
-\def\dblog#1{\ifdebug\wlog{[DEBUG]: #1}\fi}  % For debugging only
-\def\dbloglist#1#2{\edef\logtmp{\getlist{#1}}\dblog{#2{\logtmp}}}
-% END DEBUGGING MACROS   - MAKE INTO A SEPERATE FILE MAYBE EVENTUALLY
+% usage: \ifcounter<counter-name><action if it exists><action if it doesn't>
 
 \newcommand*\ifcounter[1]{%       Taken unaltered from https://tex.stackexchange.com/questions/155776/check-if-counter-exists
   \ifcsname c@#1\endcsname%       Necessary to allow redefining a list with a name already given
@@ -19,350 +16,341 @@
   \fi
 }
 
-\newcounter{lists@count@rec}
-\newcounter{lists@count@misc}
+% usage: \initcounter<name>
+% Creates a counter with name <name> if it doesn't exist already, otherwise sets it to 0.
 
-\def\emptystring{}
-\def\csvsep{,}
-
-\edef\emptylist{[]}
-
-\def\lists@head\list@cons#1#2#3{#2}
-\def\lists@tail\list@cons#1#2#3{#1}
-\def\lists@sep\list@cons#1#2#3{#3}
-
-\def\getsibling#1@front@@{\getconsstructure{#1@back}}
-\def\lists@getname list@#1@cons@#2{#1}
-
-\def\lists@iterate#1#2{%
-  %
-  %\dblog{----------------- Start of iteration -----------------}%
-  %\dblog{\expandafter\noexpand#1}
-  %
-  \def\lists@curr@h{\expandafter\lists@head#1}%
-  \def\lists@curr@t{\expandafter\lists@tail#1}%
-  %
-  %\dblog{Current tail: \lists@curr@t}%
-  %\dblog{Current head: \lists@curr@h}%
-  %
-  \expandafter\edef\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname{\lists@curr@h}%
-  \def\tmp{\csname \lists@curr@t\endcsname}%
-  \edef\tmpflag{\tmp}%
-  %\dblog{Flag: \expandafter\noexpand\tmpflag}%
-  %\dblog{}%
-  %
-  \ifx\emptylist\tmpflag%
-  \else%
-    \stepcounter{lists@count@rec}%
-    \expandafter\expandafter\expandafter\lists@iterate\tmp#2%
-    \addtocounter{lists@count@rec}{-1}%
-    %\dblog{Return from recursion}%
-  \fi%
-  %
-  %\dblog{Current command: \expandafter\noexpand\expandafter#2\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}}%
-  \expandafter\expandafter\expandafter#2\expandafter\expandafter\expandafter{\csname list@curr@item@rec\arabic{lists@count@rec}\endcsname}%
+\newcommand{\initcounter}[1]{
+  \ifcounter{#1}{\setcounter{#1}{0}}{\newcounter{#1}}
 }
+
+\def\lists@emptylist{[]}
+
+\def\lists@cons#1#2{%
+    (#2 : #1)%
+}
+
+\def\lists@pm@head\lists@cons#1#2{#2}
+\def\lists@pm@tail\lists@cons#1#2{#1}
 
 \def\lists@foldl#1#2#3{%
-  %
-  %\dblog{----------------- Start of foldl iteration -----------------}%
-  %
-  \edef\tmp{#1}%
-  %\dblog{Current list: \tmp}%
-  %\dblog{Current accumulator: #3}%
-  %
-  \def\lists@curr@h{\expandafter\lists@head#1}%
-  \def\lists@curr@t{\expandafter\lists@tail#1}%
-  %\dblog{Current tail: \lists@curr@t}%
-  %\dblog{Current head: \lists@curr@h}%
-  %
-  \def\tmp{\csname \lists@curr@t\endcsname}%
-  \edef\tmpflag{\tmp}%
-  %\dblog{Flag: \expandafter\noexpand\tmpflag}%
-  %\dblog{}%
-  %
-  \edef\newAcc{#2{\lists@curr@h}{#3}}%
-  \ifx\emptylist\tmpflag%
-    \newAcc%
-  \else%
-    \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
-    \lists@foldl\expandafter\tmp\expandafter#2\expandafter\newAcc%
-  \fi%
+    \begin{dbsection}{foldl iteration}%
+        %
+        \dblog{iterating over \noexpand#1}%
+        \dblog{accumulator value: \noexpand#2}%
+        \dblog{function: \noexpand#3}%
+        %
+        \edef\tmp{#1}%
+        \ifx\lists@emptylist\tmp%
+        #2%
+        \dblog{final iteration, value #2}%
+        \else%
+        %
+        \expandafter\def\expandafter\tmphead\expandafter{\lists@pm@head#1}%
+        \expandafter\def\expandafter\tmptail\expandafter{\lists@pm@tail#1}%
+        %
+        \dblog{head: \tmphead}%
+        \dblog{tail: \tmptail}%
+        %
+        \def\prevacc{#2}%
+        \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpacc\expandafter\expandafter\expandafter{%
+        \expandafter\expandafter\expandafter#3\expandafter\expandafter\expandafter{\expandafter\prevacc\expandafter}\expandafter{\tmphead}}%
+        \dblog{new acc: \expandafter\unexpanded\expandafter{\tmpacc}}%
+        \expandafter\expandafter\expandafter\lists@foldl\expandafter\expandafter\expandafter{\expandafter\tmptail\expandafter}\expandafter%
+        {\tmpacc}{#3}%
+        \fi%
+    \end{dbsection}%
 }
 
-\def\lists@map#1#2{%
-  %
-  %\dblog{--------------- Start of map iteration ---------------}%
-  %\dblog{Current list: #1}
-  %
-  \def\lists@curr@h{\expandafter\lists@head#1}%
-  \edef\lists@curr@t{\expandafter\lists@tail#1}%
-  \edef\lists@curr@s{\expandafter\lists@sep#1}%
-  %
-  %\dblog{Pattern matching successful}%
-  \edef\tmpflag{\csname\lists@curr@t\endcsname}%
-  %
-  \edef\tmpItem{#2{\lists@curr@h}}%
-  %\dblog{Old item: \lists@curr@h}%
-  %\dblog{New item: \tmpItem}%
-  %\dblog{Tail: \lists@curr@t}%
-  %                                               
-  \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%               Theoretically, the more elegant solution described in https://tex.stackexchange.com/questions/104506/expanding-arguments-before-macro-call
-  \def\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%           might also work, but I have not been able to solve my issues through it.
-  #1\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
-  {\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
-  \list@cons\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter%
-  {\expandafter\expandafter\expandafter\lists@curr@t\expandafter\expandafter\expandafter}%
-  \expandafter\expandafter\expandafter{\expandafter\tmpItem\expandafter}%
-  \expandafter{\lists@curr@s}}%   
-  %
-  \ifx\emptylist\tmpflag%
-  \else%
-    \expandafter\def\expandafter\tmp\expandafter{\csname\lists@curr@t\endcsname}%
-    %\dblog{Redefinition successful, value now \expandafter\noexpand#1}%
-    \expandafter\lists@map\tmp#2%
-  \fi%
-  %\dblog{Recursion successful, value now #1}%
+% usage: \foldl<f><z><name>
+% Returns <z> on an empty list <name>, otherwise, if <name> = (<x>:<xs>), returns \foldl<f>(<f><z><x>)<xs>.
+
+\newcommand{\foldl}[3]%
+{%
+    \begin{dbsection}{foldl}%
+        \expandafter\expandafter\expandafter\lists@foldl\expandafter\expandafter\expandafter%
+        {\csname lists@#3@head\endcsname}{#2}{#1}%
+    \end{dbsection}%
+}%
+
+\def\lists@foldr#1#2#3{%
+    \begin{dbsection}{foldr iteration}%
+        %
+        \dblog{iterating over \noexpand#1}%
+        \dblog{accumulator value: \noexpand#2}%
+        \dblog{function: \noexpand#3}%
+        %
+        \edef\tmp{#1}%
+        \ifx\lists@emptylist\tmp%
+        \gdef\lists@foldr@res{#2}%
+        \dblog{final iteration, value \lists@foldr@res}%
+        \else%
+        %
+        \expandafter\def\expandafter\tmphead\expandafter{\lists@pm@head#1}%
+        \expandafter\def\expandafter\tmptail\expandafter{\lists@pm@tail#1}%
+        %
+        \dblog{head: \tmphead}%
+        \dblog{tail: \expandafter\unexpanded\expandafter{\tmptail}}%
+        %
+        \expandafter\lists@foldr\expandafter{\tmptail}{#2}{#3}%
+        %
+        \dblog{result from previous recursion: \expandafter\unexpanded\expandafter{\lists@foldr@res}}%
+        \expandafter\expandafter\expandafter\gdef\expandafter\expandafter\expandafter\lists@foldr@res%
+        \expandafter\expandafter\expandafter{\expandafter\expandafter\expandafter#3\expandafter\expandafter\expandafter%
+        {\expandafter\lists@foldr@res\expandafter}\expandafter{\tmphead}}%
+        \dblog{result from current recursion: \expandafter\unexpanded\expandafter{\lists@foldr@res}}%
+        \fi%
+    \end{dbsection}%
 }
 
+% usage: \foldl<f><z><name>
+% Returns <z> on an empty list <name>, otherwise, if <name> = (<x>:<xs>), returns <f>(\foldl<f><z><xs>)<x>.
 
-
-\def\pop#1{%
-  \IfNotEmpty{#1}{%
-    \addtocounter{list@#1@count}{-1}%
-  }%
+\newcommand{\foldr}[3]
+{%
+    \begin{dbsection}{foldr}%
+        \def\lists@foldr@res{}%
+        \expandafter\expandafter\expandafter\lists@foldr\expandafter\expandafter\expandafter%
+        {\csname lists@#3@head\endcsname}{#2}{#1}%
+        \lists@foldr@res%
+    \end{dbsection}%
 }
 
-\def\iterate#1#2{%
-  \IfNotEmpty{#1}{%
-    %\dblog{=================== Begin iterate ====================}%
-    \setcounter{lists@count@rec}{0}%
-    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}%
-    \def\tempB{\csname \tempA\endcsname}%
-    \expandafter\expandafter\expandafter\lists@iterate\tempB#2%
-  }%
+% usage: \declarelist<name>
+
+\newcommand{\declarelist}[1]
+{
+    \expandafter\edef\csname lists@#1@head\endcsname{\lists@emptylist}
+    \initcounter{lists@#1@count}
 }
 
-\def\map#1#2{%
-  \IfNotEmpty{#1}{%
-    %\dblog{===================== Begin map ======================}%
-    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
-    \def\tempB{\csname \tempA\endcsname}%
-    \expandafter\expandafter\expandafter\lists@map\tempB#2%
-  }%
+% usage: \pushback<name><item>
+
+\newcommand{\pushback}[2]
+{%
+    \begin{dbsection}{pushback}%
+    \dblog{before: \csname lists@#1@head\endcsname}%
+    %
+    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmptail%
+    \expandafter\expandafter\expandafter{\csname lists@#1@head\endcsname}%
+    %
+    \expandafter\def\expandafter\tmphead\expandafter{\csname lists@#1@head\endcsname}%
+    %
+    \expandafter\expandafter\expandafter\gdef\expandafter\tmphead\expandafter{\expandafter\lists@cons\expandafter{\tmptail}{#2}}%
+    %
+    \dblog{after: \tmphead \ in macro \expandafter\noexpand\tmphead}%
+    \stepcounter{lists@#1@count}%
+    \end{dbsection}%
 }
 
-\def\foldl#1#2#3{%
-  \IfNotEmpty{#1}{%
-    %\dblog{==================== Begin foldl =====================}%
-    \edef\tempA{list@#1@cons@item\arabic{list@#1@count}}
-    \def\tempB{\csname \tempA\endcsname}%
-    \expandafter\expandafter\expandafter\lists@foldl\tempB#2#3%
-  }%
+% usage: \popback[<out>, default: \popped]<name>
+% Removes the last element of <name> and stores it in <out>.
+
+\newcommand{\popback}[2][\popped]%
+{%
+    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpbody%
+    \expandafter\expandafter\expandafter{\csname lists@#2@head\endcsname}%
+    %
+    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmptail%
+    \expandafter\expandafter\expandafter{\expandafter\lists@pm@tail\tmpbody}%
+    %
+    \expandafter\def\expandafter\tmphead\expandafter{\csname lists@#2@head\endcsname}%
+    %
+    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter#1%
+    \expandafter\expandafter\expandafter{\expandafter\lists@pm@head\tmpbody}%
+    %
+    \dblog{\expandafter\unexpanded\expandafter{\tmptail}}%
+    \expandafter\expandafter\expandafter\gdef\expandafter\tmphead\expandafter{\tmptail}%
+    \addtocounter{lists@#2@count}{-1}%
 }
 
-\def\head#1{%
-  \IfNotEmpty{#1}{%
-    \takeNth{#1}{0}%
-  }%
+% usage: \peek<name>
+% returns the last element of <name>.
+
+\newcommand{\peek}[1]
+{
+    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpbody%
+    \expandafter\expandafter\expandafter{\csname lists@#1@head\endcsname}
+
+    \expandafter\lists@head\tmpbody
 }
 
-\def\pop#1{%
-  \IfNotEmpty{#1}{%
-    \takeFomNth{#1}{1}{lists@pop@temp}%
-    \edef\lists@pop@sep{\getsep{#1}}%
-    \copyto{#1}{lists@pop@temp}{\lists@pop@sep}%
-  }%
+% usage: \iterate<name><f>
+% Executes <f> on every item of <name> in the order of insertion.
+
+\newcommand{\iterate}[2]
+{%
+    \def\lists@it##1##2{##1#2{##2}}%
+    \foldr{\lists@it}{}{#1}%
 }
 
-\def\copyto#1#2#3{%
-  \declarelist{#1}{#3}%
-  \def\lists@it##1{\appendtolist{#1}{##1}}%
-  \iterate{#2}{\lists@it}%
+% usage: \map<source><f><target>
+% Creates list <target> where <target>[i] = <f>(<source>[i]).
+
+\newcommand{\map}[3]
+{%
+    \declarelist{#3}%
+    \def\lists@it@map##1{\pushback{#3}{#2{##1}}}%
+    \iterate{#1}{\lists@it@map}%
 }
 
-\def\concat#1#2{%
-  \def\lists@concat@it##1{\appendtolist{#1}{##1}}
-  \iterate{#2}{\lists@concat@it}
+% usage: \rename<old><new>
+% Creates list <new> pointing to current state of list <old>.
+
+\newcommand{\rename}[2]
+{%
+    \expandafter\gdef\expandafter\tmphead\expandafter{\csname lists@#2@head\endcsname}%
+    %
+    \expandafter\expandafter\expandafter\gdef\expandafter\expandafter\expandafter\tmptail%
+    \expandafter\expandafter\expandafter{\csname lists@#1@head\endcsname}%
+    %
+    \expandafter\expandafter\expandafter\gdef\expandafter\tmphead\expandafter{\tmptail}%
+    \initcounter{lists@#2@count}%
+    \setcounter{lists@#2@count}{\value{lists@#1@count}}%
 }
 
-\def\takeNth#1#2{%
-  \setcounter{lists@count@misc}{#2 + 1}%
-  \expandafter\def\expandafter\lists@n\expandafter{%
-    \csname list@#1@cons@item\arabic{lists@count@misc}\endcsname%
-  }%
-  \expandafter\expandafter\expandafter\edef\expandafter\expandafter\expandafter\lists@h\expandafter\expandafter\expandafter{%
-  \expandafter\expandafter\expandafter\lists@head\lists@n}%
-  \lists@h%
-  %\setcounter{lists@count@misc}{0}
-  %
-  %\def\lists@take##1{%
-  %  \ifnum#2=\value{lists@count@misc}%
-  %    \dblog{Taken element at pos #2: ##1}%
-  %     ##1%
-  %  \fi%
-  %  \stepcounter{lists@count@misc}%
-  %}
-  %
-  %\iterate{#1}{\lists@take}
+% usage: \copyto<old><new>
+% Creates list <new> identical to current state of list <old>.
+
+\newcommand{\copyto}[2]
+{
+    \declarelist{#2}
+    \def\lists@it@copy##1{\pushback{#2}{##1}}
+    \iterate{#1}{\lists@it@copy}
 }
 
-\def\takeUpToNth#1#2#3{%
-  %\dblog{==================== Begin firstN ====================}%
-  \declarelist{#3}{\getsep{#1}}%
-  \setcounter{lists@count@misc}{0}
-  
-  \def\lists@take##1{%
-    \ifnum#2>\value{lists@count@misc}%
-      %\dblog{Taken}%
-      \appendtolist{#3}{##1}%
-      \stepcounter{lists@count@misc}%
-    \fi%
-  }
-  
-  \iterate{#1}{\lists@take}
+% usage: \concat<l1><l2>
+% Appends list <l2> to the back of list <l1>.
+
+\newcommand{\concat}[2]
+{
+    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\initacc\expandafter\expandafter\expandafter%
+    {\csname lists@#1@head\endcsname}
+    \expandafter\foldl\expandafter{\expandafter\lists@cons\expandafter}\expandafter{\initacc}{#2}
 }
 
-\def\takeFomNth#1#2#3{%
-  %\dblog{==================== Begin firstN ====================}%
-  \declarelist{#3}{\getsep{#1}}%
-  \setcounter{lists@count@misc}{1}
-  
-  \def\lists@take##1{%
-    \ifnum#2<\value{lists@count@misc}%
-      %\dblog{Taken}%
-      \appendtolist{#3}{##1}%
-    \fi%
-    \stepcounter{lists@count@misc}%
-  }
-  
-  \iterate{#1}{\lists@take}
+% usage: \reverse<name>
+
+\newcommand{\reverse}[1]
+{%
+    \begin{dbsection}{Reverse}%
+    \declarelist{#1@reverse}%
+    \def\lists@it@reverse##1##2{\pushback{#1@reverse}{##2}##1}%
+    %
+    \foldr{\lists@it@reverse}{\rename{#1@reverse}{#1}}{#1}%
+    \end{dbsection}%
 }
 
-\newcommand{\splitAt}[2]{
-  \declarelist{#1@front}{\getsep{#1}}
-  \declarelist{#1@back}{\getsep{#1}}
-  \setcounter{lists@count@misc}{0}
-  
-  \def\lists@take##1{
-    \ifnum#2<\value{lists@count@misc}
-      \appendtolist{#1@back}{##1}
+% usage: \splitat<name><index>
+% Creates lists <name>@front, <name>@back where <name>@front contains all those items with index <= <index>. 1-indexed.
+
+\newcommand{\splitat}[2]
+{%
+    \setcounter{lists@split}{1}%
+    \declarelist{#1@front}%
+    \declarelist{#1@back}%
+    \def\lists@it@split##1{%
+        \ifnum\value{lists@split}>#2%
+            \pushback{#1@back}{##1}%
+        \else%
+            \pushback{#1@front}{##1}%
+        \fi%
+        \stepcounter{lists@split}%
+    }%
+    \iterate{#1}{\lists@it@split}%
+}
+
+% usage: \take<name><index>
+% Throws away all items with index > <index>. 1-indexed.
+
+\newcommand{\take}[2]
+{%
+    \splitat{#1}{#2}%
+    \rename{#1@front}{#1}%
+    \setcounter{lists@#1@count}{#2}%
+}
+
+% usage: \drop<name><index>
+% Throws away all items with index <= <index>. 1-indexed.
+
+\newcommand{\drop}[2]
+{%
+    \splitat{#1}{#2}%
+    \rename{#1@back}{#1}%
+    \setcounter{lists@#1@count}{\value{lists@#1@count}-#2}%
+}
+
+% usage: \getelem<name><index>
+% Returns the element at index <index>. 1-indexed.
+
+\newcommand{\getelem}[2]
+{
+    \splitat{#1}{#2}
+    \peek{#1@back}
+}
+
+% usage: \evaluatecount<name><f>
+% Applies function <f> to the item count of list <name>.
+
+\newcommand{\evaluatecount}[2]{#2{lists@#1@count}}
+
+% usage: \getlength<name>
+% Applies function \arabic to the item count of list <name>.
+
+\newcommand{\getlength}[1]{\evaluatecount{#1}{\arabic}}
+
+% usage: \getcount<name>
+% Applies function \value to the item count of list <name>.
+
+\newcommand{\getcount}[1]{\evaluatecount{#1}{\value}}
+
+% usage: \getconsstructure<name>
+% Returns a text-representation of the internal structure of list <name>.
+
+\newcommand{\getconsstructure}[1]{\csname lists@#1@head\endcsname}
+
+% usage: \getlist<name><separator>
+% Prints all items of list <name> in order of insertion, separated by <separator>
+
+\newcommand{\getlist}[2]
+{%
+    \def\tmp{\lists@endoflist}%
+    \def\lists@it@sep##1##2{%
+        \ifx\tmp##1%
+            \dblog{End of list}%
+            ##2%
+        \else%
+            ##2#2##1%
+        \fi%
+    }%
+    \foldl{\lists@it@sep}{\tmp}{#1}%
+}
+
+% usage: \listfromcsv<name><items>
+% Initializes list <name>, then interprets <items> as CSV-string and appends them from left to right.
+
+\newcommand{\listfromcsv}[2]
+{%
+    \declarelist{#1}%
+    \def\lists@app##1{\pushback{#1}{##1}}%
+    \edef\tmp{#2}%
+    \expandafter\forcsvlist\expandafter\lists@app\expandafter{\tmp}%
+}
+
+% usage: \ifelseempty<name><action if empty><action if not>
+
+\newcommand{\ifelseepmty}[3]
+{
+    \ifnum\value{lists@#1@count}=0
+        #2
     \else
-      \appendtolist{#1@front}{##1}
+        #3
     \fi
-    \stepcounter{lists@count@misc}
-  }
-  
-  \iterate{#1}{\lists@take}
 }
 
-\newcommand{\declarelist}[2]
-{
-    \expandafter\edef\csname list@#1@cons@item0\endcsname{\emptylist}
-    \expandafter\edef\csname list@#1@sep\endcsname{#2}
-    \ifcounter{list@#1@count}{\setcounter{list@#1@count}{0}}{\newcounter{list@#1@count}}
-}
+% usage: \ifempty<name><action>
 
-\newcommand{\listfromcsv}[3][\csvsep]
-{
-  \declarelist{#2}{#1}
-  \def\lists@app##1{\appendtolist{#2}{##1}}
-  \edef\tmp{#3}
-  %\dblog{Entering foreach}
-  \expandafter\forcsvlist\expandafter\lists@app\expandafter{\tmp}
-}
+\newcommand{\ifempty}[2]{\ifelseempty{#1}{#2}{}}
 
-\def\list@cons#1#2#3{%
-  (#2 [CONS] \csname #1\endcsname)%
-}
+% usage: \ifnotempty<name><action>
 
-\def\getconsstructure#1{%
-%%\dblog{List head: \expandafter\noexpand\csname list@#1@cons@item\arabic{list@#1@count}\endcsname}%
-\csname list@#1@cons@item\arabic{list@#1@count}\endcsname}
-
-\def\getsep#1{\csname list@#1@sep\endcsname}
-
-\def\unused#1#2{% REMOVE EVENTUALLY PROBABLY
-  \ifx\emptylist#1%
-    \expandafter\def\csname list@#1\endcsname{\emptystring}%
-    \expandafter\def\csname list@#1@csv\endcsname{\emptystring}%
-  \fi%
-  \edef\temp{\csname list@#1\endcsname}%
-  \ifx\emptystring\temp%
-    \expandafter\edef\csname list@#1\endcsname{#2}%
-  \else%
-    \expandafter\edef\csname list@#1\endcsname{%
-      \temp\csname list@#1@sep\endcsname#2}%
-  \fi%
-  %
-  \edef\temp{\csname list@#1@csv\endcsname}%
-  \ifx\emptystring\temp%
-    \expandafter\edef\csname list@#1@csv\endcsname{#2}%
-  \else%
-    \expandafter\edef\csname list@#1@csv\endcsname{%
-      \temp\csvsep#2}%
-  \fi%
-}
-
-\newcommand{\declarecsvlist}[1]{\declarelist{#1}{, }}
-
-\def\lists@concat#1#2#3{%
-  \ifstrequal{#2}{\emptystring}{#1}{#1#3#2}
-}
-
-\newcommand{\getlist}[1]{
-  \def\setsepconcat##1##2{\lists@concat{##1}{##2}{\getsep{#1}}}
-  \foldl{#1}{\setsepconcat}{\emptystring}
-}
-
-% Appends a new item to the list specified by #1
-\def\appendtolist#1#2{%
-  %\dblog{================ Begin append ===============}%
-  %
-  \edef\lists@oldHead{list@#1@cons@item\arabic{list@#1@count}}%
-  %\dblog{Appending #2 to #1 -> \tempA \space CONS #2}
-  %
-  \stepcounter{list@#1@count}%
-  \edef\lists@newHead{list@#1@cons@item\arabic{list@#1@count}}%
-  %
-  \edef\lists@item@value{#2}%
-  \edef\lists@sep{\getsep{#1}}
-  %
-  \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\lists@app@tmp\expandafter\expandafter\expandafter{%
-    \expandafter\expandafter\expandafter%
-    \list@cons\expandafter\expandafter\expandafter{%
-      \expandafter\lists@oldHead\expandafter}%
-      \expandafter{\lists@item@value}{\lists@sep}%
-  }%
-  %
-  %\dblog{\expandafter\noexpand\lists@app@tmp}%
-  %
-  \expandafter\expandafter\expandafter\def%
-    \expandafter\csname\expandafter\lists@newHead\expandafter\endcsname\expandafter%
-    {\lists@app@tmp}%
-  %
-  %\dblog{}%
-}
-
-\newcommand{\doforall}[2]
-{
-  \iterate{#1}{#2}
-  \PackageWarning{lists}{\noexpand\doforall is deprecated, use \noexpand\iterate instead.}
-}
-
-\newcommand{\IfElseEmpty}[3]
-{
-  \ifnum\value{list@#1@count} = 0%
-    #2
-  \else%
-    #3
-  \fi%
-}
-
-\newcommand{\IfEmpty}[2]{\IfElseEmpty{#1}{#2}{}}
-
-\newcommand{\IfNotEmpty}[2]{\IfElseEmpty{#1}{}{#2}}
-
-\newcommand{\getcount}[1]{\value{list@#1@count}}
-
-\newcommand{\getcountdb}[1]{\arabic{list@#1@count}}
+\newcommand{\ifnotempty}[2]{\ifelseempty{#1}{}{#2}}
