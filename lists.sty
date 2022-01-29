@@ -54,7 +54,9 @@
         \def\prevacc{#2}%
         \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpacc\expandafter\expandafter\expandafter{%
         \expandafter\expandafter\expandafter#3\expandafter\expandafter\expandafter{\expandafter\prevacc\expandafter}\expandafter{\tmphead}}%
+        %
         \dblog{new acc: \expandafter\unexpanded\expandafter{\tmpacc}}%
+        %
         \expandafter\expandafter\expandafter\lists@foldl\expandafter\expandafter\expandafter{\expandafter\tmptail\expandafter}\expandafter%
         {\tmpacc}{#3}%
         \fi%
@@ -127,7 +129,8 @@
 
 \newcommand{\pushback}[2]
 {%
-    \begin{dbsection}{pushback}%
+  \debugfalse
+  \begin{dbsection}{pushback}%
     \dblog{before: \csname lists@#1@head\endcsname}%
     %
     \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmptail%
@@ -139,7 +142,8 @@
     %
     \dblog{after: \tmphead \ in macro \expandafter\noexpand\tmphead}%
     \stepcounter{lists@#1@count}%
-    \end{dbsection}%
+  \end{dbsection}%
+  \debugtrue
 }
 
 % usage: \popback[<out>, default: \popped]<name>
@@ -174,13 +178,17 @@
     \expandafter\lists@head\tmpbody
 }
 
-% usage: \iterate<name><f>
+% usage: \doforall<name><f>
 % Executes <f> on every item of <name> in the order of insertion.
 
-\newcommand{\iterate}[2]
+\newcommand{\doforall}[2]
 {%
+  \debugfalse
+  \begin{dbsection}{doforall}%
     \def\lists@it##1##2{##1#2{##2}}%
     \foldr{\lists@it}{}{#1}%
+  \end{dbsection}%
+  \debugtrue
 }
 
 % usage: \map<source><f><target>
@@ -190,7 +198,7 @@
 {%
     \declarelist{#3}%
     \def\lists@it@map##1{\pushback{#3}{#2{##1}}}%
-    \iterate{#1}{\lists@it@map}%
+    \doforall{#1}{\lists@it@map}%
 }
 
 % usage: \rename<old><new>
@@ -215,7 +223,7 @@
 {
     \declarelist{#2}
     \def\lists@it@copy##1{\pushback{#2}{##1}}
-    \iterate{#1}{\lists@it@copy}
+    \doforall{#1}{\lists@it@copy}
 }
 
 % usage: \concat<l1><l2>
@@ -256,7 +264,7 @@
         \fi%
         \stepcounter{lists@split}%
     }%
-    \iterate{#1}{\lists@it@split}%
+    \doforall{#1}{\lists@it@split}%
 }
 
 % usage: \take<name><index>
@@ -338,7 +346,7 @@
 
 % usage: \ifelseempty<name><action if empty><action if not>
 
-\newcommand{\ifelseepmty}[3]
+\newcommand{\ifelseempty}[3]
 {
     \ifnum\value{lists@#1@count}=0
         #2
