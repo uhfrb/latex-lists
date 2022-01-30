@@ -6,6 +6,8 @@
 \newcounter{lists@split}
 \newcounter{lists@misc}
 
+\newcounter{lists@concat@temp@count}
+
 % usage: \ifcounter<counter-name><action if it exists><action if it doesn't>
 
 \newcommand*\ifcounter[1]{%       Taken unaltered from https://tex.stackexchange.com/questions/155776/check-if-counter-exists
@@ -32,76 +34,53 @@
 \def\lists@pm@head\lists@cons#1#2{#2}
 \def\lists@pm@tail\lists@cons#1#2{#1}
 
-\def\lists@foldl#1#2#3{%
-    \begin{dbsection}{foldl iteration}%
-        %
-        \dblog{iterating over \noexpand#1}%
-        \dblog{accumulator value: \noexpand#2}%
-        \dblog{function: \noexpand#3}%
-        %
-        \edef\tmp{#1}%
-        \ifx\lists@emptylist\tmp%
-        #2%
-        \dblog{final iteration, value #2}%
-        \else%
+\def\lists@foldl#1#2#3#4{%
+    \begingroup%
+    \edef\tmp{#1}%
+    \ifx\lists@emptylist\tmp %
+        \gdef#4{#2}%
+    \else%
         %
         \expandafter\def\expandafter\tmphead\expandafter{\lists@pm@head#1}%
         \expandafter\def\expandafter\tmptail\expandafter{\lists@pm@tail#1}%
-        %
-        \dblog{head: \tmphead}%
-        \dblog{tail: \tmptail}%
         %
         \def\prevacc{#2}%
         \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpacc\expandafter\expandafter\expandafter{%
         \expandafter\expandafter\expandafter#3\expandafter\expandafter\expandafter{\expandafter\prevacc\expandafter}\expandafter{\tmphead}}%
         %
-        \dblog{new acc: \expandafter\unexpanded\expandafter{\tmpacc}}%
-        %
         \expandafter\expandafter\expandafter\lists@foldl\expandafter\expandafter\expandafter{\expandafter\tmptail\expandafter}\expandafter%
-        {\tmpacc}{#3}%
-        \fi%
-    \end{dbsection}%
+        {\tmpacc}{#3}{#4}%
+    \fi%
+    \endgroup%
 }
 
-% usage: \foldl<f><z><name>
+% usage: \foldl[<out>]<f><z><name>
 % Returns <z> on an empty list <name>, otherwise, if <name> = (<x>:<xs>), returns \foldl<f>(<f><z><x>)<xs>.
+% Return value stored in <out>, default: \foldres
 
-\newcommand{\foldl}[3]%
+\newcommand{\foldl}[4][\foldres]%
 {%
-    \begin{dbsection}{foldl}%
         \expandafter\expandafter\expandafter\lists@foldl\expandafter\expandafter\expandafter%
-        {\csname lists@#3@head\endcsname}{#2}{#1}%
-    \end{dbsection}%
+        {\csname lists@#4@head\endcsname}{#3}{#2}{#1}%
 }%
 
 \def\lists@foldr#1#2#3{%
-    \begin{dbsection}{foldr iteration}%
-        %
-        \dblog{iterating over \noexpand#1}%
-        \dblog{accumulator value: \noexpand#2}%
-        \dblog{function: \noexpand#3}%
-        %
-        \edef\tmp{#1}%
-        \ifx\lists@emptylist\tmp%
-        \gdef\lists@foldr@res{#2}%
-        \dblog{final iteration, value \lists@foldr@res}%
-        \else%
-        %
-        \expandafter\def\expandafter\tmphead\expandafter{\lists@pm@head#1}%
-        \expandafter\def\expandafter\tmptail\expandafter{\lists@pm@tail#1}%
-        %
-        \dblog{head: \tmphead}%
-        \dblog{tail: \expandafter\unexpanded\expandafter{\tmptail}}%
-        %
-        \expandafter\lists@foldr\expandafter{\tmptail}{#2}{#3}%
-        %
-        \dblog{result from previous recursion: \expandafter\unexpanded\expandafter{\lists@foldr@res}}%
-        \expandafter\expandafter\expandafter\gdef\expandafter\expandafter\expandafter\lists@foldr@res%
-        \expandafter\expandafter\expandafter{\expandafter\expandafter\expandafter#3\expandafter\expandafter\expandafter%
-        {\expandafter\lists@foldr@res\expandafter}\expandafter{\tmphead}}%
-        \dblog{result from current recursion: \expandafter\unexpanded\expandafter{\lists@foldr@res}}%
-        \fi%
-    \end{dbsection}%
+    \begingroup%
+    \edef\tmp{#1}%
+    \ifx\lists@emptylist\tmp%
+    \gdef\lists@foldr@res{#2}%
+    \else%
+    %
+    \expandafter\def\expandafter\tmphead\expandafter{\lists@pm@head#1}%
+    \expandafter\def\expandafter\tmptail\expandafter{\lists@pm@tail#1}%
+    %
+    \expandafter\lists@foldr\expandafter{\tmptail}{#2}{#3}%
+    %
+    \expandafter\expandafter\expandafter\gdef\expandafter\expandafter\expandafter\lists@foldr@res%
+    \expandafter\expandafter\expandafter{\expandafter\expandafter\expandafter#3\expandafter\expandafter\expandafter%
+    {\expandafter\lists@foldr@res\expandafter}\expandafter{\tmphead}}%
+    \fi%
+    \endgroup%
 }
 
 % usage: \foldl<f><z><name>
@@ -109,12 +88,10 @@
 
 \newcommand{\foldr}[3]
 {%
-    \begin{dbsection}{foldr}%
         \def\lists@foldr@res{}%
         \expandafter\expandafter\expandafter\lists@foldr\expandafter\expandafter\expandafter%
         {\csname lists@#3@head\endcsname}{#2}{#1}%
         \lists@foldr@res%
-    \end{dbsection}%
 }
 
 % usage: \declarelist<name>
@@ -129,10 +106,6 @@
 
 \newcommand{\pushback}[2]
 {%
-  \debugfalse
-  \begin{dbsection}{pushback}%
-    \dblog{before: \csname lists@#1@head\endcsname}%
-    %
     \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmptail%
     \expandafter\expandafter\expandafter{\csname lists@#1@head\endcsname}%
     %
@@ -140,10 +113,16 @@
     %
     \expandafter\expandafter\expandafter\gdef\expandafter\tmphead\expandafter{\expandafter\lists@cons\expandafter{\tmptail}{#2}}%
     %
-    \dblog{after: \tmphead \ in macro \expandafter\noexpand\tmphead}%
     \stepcounter{lists@#1@count}%
-  \end{dbsection}%
-  \debugtrue
+}
+
+% usage: \pushfront<name><item>
+
+\newcommand{\pushfront}[2]
+{
+    \listfromcsv{pushfront@temp}{#2}
+    \concat{pushfront@temp}{#1}
+    \rename{pushfront@temp}{#1}
 }
 
 % usage: \popback[<out>, default: \popped]<name>
@@ -162,20 +141,20 @@
     \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter#1%
     \expandafter\expandafter\expandafter{\expandafter\lists@pm@head\tmpbody}%
     %
-    \dblog{\expandafter\unexpanded\expandafter{\tmptail}}%
     \expandafter\expandafter\expandafter\gdef\expandafter\tmphead\expandafter{\tmptail}%
     \addtocounter{lists@#2@count}{-1}%
 }
 
-% usage: \peek<name>
-% returns the last element of <name>.
+% usage: \peek[<out>]<name>
+% Stores the last element of <name> in <out>, default: \top.
 
-\newcommand{\peek}[1]
-{
+\newcommand{\peek}[2][\top]%
+{%
     \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpbody%
-    \expandafter\expandafter\expandafter{\csname lists@#1@head\endcsname}
-
-    \expandafter\lists@head\tmpbody
+    \expandafter\expandafter\expandafter{\csname lists@#2@head\endcsname}%
+    %
+    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter#1%
+    \expandafter\expandafter\expandafter{\expandafter\lists@pm@head\tmpbody}%
 }
 
 % usage: \doforall<name><f>
@@ -183,12 +162,8 @@
 
 \newcommand{\doforall}[2]
 {%
-  \debugfalse
-  \begin{dbsection}{doforall}%
     \def\lists@it##1##2{##1#2{##2}}%
     \foldr{\lists@it}{}{#1}%
-  \end{dbsection}%
-  \debugtrue
 }
 
 % usage: \map<source><f><target>
@@ -231,21 +206,17 @@
 
 \newcommand{\concat}[2]
 {
-    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\initacc\expandafter\expandafter\expandafter%
-    {\csname lists@#1@head\endcsname}
-    \expandafter\foldl\expandafter{\expandafter\lists@cons\expandafter}\expandafter{\initacc}{#2}
+    \doforall{#2}{\pushback{#1}}
 }
 
 % usage: \reverse<name>
 
 \newcommand{\reverse}[1]
 {%
-    \begin{dbsection}{Reverse}%
     \declarelist{#1@reverse}%
     \def\lists@it@reverse##1##2{\pushback{#1@reverse}{##2}##1}%
     %
     \foldr{\lists@it@reverse}{\rename{#1@reverse}{#1}}{#1}%
-    \end{dbsection}%
 }
 
 % usage: \splitat<name><index>
@@ -257,10 +228,10 @@
     \declarelist{#1@front}%
     \declarelist{#1@back}%
     \def\lists@it@split##1{%
-        \ifnum\value{lists@split}>#2%
-            \pushback{#1@back}{##1}%
+        \ifnum\value{lists@split}>#2 %
+          \pushback{#1@back}{##1}%
         \else%
-            \pushback{#1@front}{##1}%
+          \pushback{#1@front}{##1}%
         \fi%
         \stepcounter{lists@split}%
     }%
@@ -324,7 +295,6 @@
     \def\tmp{\lists@endoflist}%
     \def\lists@it@sep##1##2{%
         \ifx\tmp##1%
-            \dblog{End of list}%
             ##2%
         \else%
             ##2#2##1%
@@ -347,12 +317,12 @@
 % usage: \ifelseempty<name><action if empty><action if not>
 
 \newcommand{\ifelseempty}[3]
-{
-    \ifnum\value{lists@#1@count}=0
+{%
+    \ifnum\value{lists@#1@count} = 0%
         #2
-    \else
+    \else%
         #3
-    \fi
+    \fi%
 }
 
 % usage: \ifempty<name><action>
