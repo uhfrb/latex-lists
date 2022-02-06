@@ -83,8 +83,8 @@
     \endgroup%
 }
 
-% usage: \foldl<f><z><name>
-% Returns <z> on an empty list <name>, otherwise, if <name> = (<x>:<xs>), returns <f>(\foldl<f><z><xs>)<x>.
+% usage: \foldr<f><z><name>
+% Returns <z> on an empty list <name>, otherwise, if <name> = (<x>:<xs>), returns <f>(\foldr<f><z><xs>)<x>.
 
 \newcommand{\foldr}[3]
 {%
@@ -150,11 +150,13 @@
 
 \newcommand{\peek}[2][\top]%
 {%
-    \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpbody%
-    \expandafter\expandafter\expandafter{\csname lists@#2@head\endcsname}%
+    \ifelseempty{#2}{\def#1{\perp}}{%
+        \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter\tmpbody%
+        \expandafter\expandafter\expandafter{\csname lists@#2@head\endcsname}%
     %
     \expandafter\expandafter\expandafter\def\expandafter\expandafter\expandafter#1%
     \expandafter\expandafter\expandafter{\expandafter\lists@pm@head\tmpbody}%
+    }%
 }
 
 % usage: \doforall<name><f>
