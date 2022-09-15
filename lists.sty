@@ -67,7 +67,6 @@
 \def\lists@foldr#1#2#3{%
     \begingroup%
     \expandafter\def\expandafter\tmp{#1}%
-    \dblog{List: \expandafter\unexpanded\expandafter{\tmp}}%
     \ifx\lists@emptylist\tmp%
     \gdef\lists@foldr@res{#2}%
     \else%
