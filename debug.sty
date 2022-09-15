@@ -4,7 +4,11 @@
 
 \newif\ifdebug
 \debugtrue
-\def\dblog#1{\ifdebug\wlog{[DEBUG]: \db@indentstr #1}\fi}
+
+\newwrite\debugout
+\immediate\openout\debugout=\jobname.dbg
+
+\def\dblog#1{\ifdebug\immediate\write\debugout{[DEBUG]: \db@indentstr #1}\wlog{[DEBUG]: \db@indentstr #1}\fi}
 
 \def\db@indentstr{}
 
